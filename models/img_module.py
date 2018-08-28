@@ -16,13 +16,13 @@ class ImgModule(BasicModule):
         self.module_name = "image_model"
         self.features = vgg_net.features
         self.classifier = nn.Sequential(
-            *list(vgg_net.classifier)[:-1],
+            *(list(vgg_net.classifier)[:-1]),
             nn.Linear(4096, bit)
         )
 
     def forward(self, x):
         x = self.features(x)
-        x = x.reshape((-1, 25088))
+        x = x.view(-1, 25088)
         x = self.classifier(x)
         return x
 

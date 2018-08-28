@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 from torch.optim import SGD
+from tqdm import tqdm
 from models import ImgModule, TxtModule
 from utils import calc_map
 
@@ -36,12 +37,12 @@ def train(**kwargs):
 
     Sim = calc_neighbor(train_L, train_L)
 
-    F = Variable(torch.randn(opt.bit, num_train))
-    G = Variable(torch.randn(opt.bit, num_train))
+    F_buffer = torch.randn(num_train, opt.bit)
+    G_buffer = torch.randn(num_train, opt.bit)
 
     if opt.use_gpu:
-        F = F.cuda()
-        G = G.cuda()
+        F_buffer = F_buffer.cuda()
+        G_buffer = G_buffer.cuda()
 
     batch_size = opt.batch_size
 
@@ -54,69 +55,89 @@ def train(**kwargs):
         lr = learning_rate[epoch]
 
         # train image net
-        for i in range(num_train // batch_size):
+        for i in tqdm(range(num_train // batch_size)):
             index = np.random.permutation(num_train)
             ind = index[0: batch_size]
 
-            sample_L = train_L[ind, :]
-            image = Variable(train_x[ind].type(torch.float))
+            sample_L = Variable(train_L[ind, :])
+            image = Variable(train_x[ind, :].type(torch.FloatTensor))
             if opt.use_gpu:
                 image = image.cuda()
+                sample_L = sample_L.cuda()
 
             # similar matrix size: (batch_size, num_train)
             S = calc_neighbor(sample_L, sample_L)  # S: (batch_size, batch_size)
             cur_f = img_model(image)  # cur_f: (batch_size, bit)
-            F[:, ind] = cur_f
+            F_buffer[ind, :] = cur_f.data
+            F = Variable(F_buffer)
+            G = Variable(G_buffer)
+
             B = torch.sign(F + G)
 
             # calculate loss
             # theta_x: (batch_size, batch_size)
+
+            # print('cur_f:', cur_f)
+            # print('G[ind, :]:', G[ind, :])
             theta_x = 1.0 / 2 * torch.matmul(cur_f, G[ind, :].transpose(0, 1))
-            logloss_x = -torch.sum(torch.mul(S, theta_x) - torch.log(1.0 + torch.exp(theta_x)))
+            # print('theta_x:', theta_x)
+            # print('S:', S)
+            logloss_x = -torch.sum(torch.matmul(S, theta_x) - torch.log(1.0 + torch.exp(theta_x)))
+            # print('logloss_x:', logloss_x)
             quantization_x = torch.sum(torch.pow(B[ind, :] - cur_f, 2))
+            # print('quantization_x:', quantization_x)
             balance_x = torch.sum(torch.pow(torch.sum(F, dim=0), 2))
+            # print('balance_x:', balance_x)
             loss_x = logloss_x + opt.gamma * quantization_x + opt.eta * balance_x
-            loss_x /= batch_size
+            # print(batch_size * num_train)
+            loss_x /= (batch_size * num_train)
+            # print('loss_x:', loss_x)
 
             optimizer_img.zero_grad()
             loss_x.backward()
             optimizer_img.step()
 
+        img_model.save('checkpoints/' + img_model.module_name + '_' + str(epoch) + '.pth')
+
         # train txt net
-        for i in range(num_train // batch_size):
+        for i in tqdm(range(num_train // batch_size)):
             index = np.random.permutation(num_train)
             ind = index[0: batch_size]
 
             sample_L = train_L[ind, :]
-            text = Variable(train_y[ind].type(torch.float))
+            text = Variable(train_y[ind].type(torch.FloatTensor))
             if opt.use_gpu:
-                image = image.cuda()
+                text = text.cuda()
+                sample_L = sample_L.cuda()
 
             # similar matrix size: (batch_size, num_train)
             S = calc_neighbor(sample_L, sample_L)  # S: (batch_size, batch_size)
             cur_g = txt_model(text)  # cur_f: (batch_size, bit)
-            G[:, ind] = cur_g
+            F_buffer[ind, :] = cur_g.data
+            F = Variable(F_buffer)
+            G = Variable(G_buffer)
+
             B = torch.sign(F + G)
 
             # calculate loss
             # theta_y: (batch_size, batch_size)
             theta_y = 1.0 / 2 * torch.matmul(F[ind, :], cur_g.transpose(0, 1))
-            logloss_y = -torch.sum(torch.mul(S, theta_y) - torch.log(1.0 + torch.exp(theta_y)))
+            logloss_y = -torch.sum(torch.matmul(S, theta_y) - torch.log(1.0 + torch.exp(theta_y)))
             quantization_y = torch.sum(torch.pow(B[ind, :] - cur_g, 2))
             balance_y = torch.sum(torch.pow(torch.sum(G, dim=0), 2))
             loss_y = logloss_y + opt.gamma * quantization_y + opt.eta * balance_y
             loss_y /= (num_train * batch_size)
 
+            print(i)
             optimizer_txt.zero_grad()
             loss_y.backward()
             optimizer_txt.step()
 
-        img_model.save(img_model.module_name + '_' + str(epoch) + '.pth')
-        txt_model.save(txt_model.module_name + '_' + str(epoch) + '.pth')
+        txt_model.save('checkpoints/' + txt_model.module_name + '_' + str(epoch) + '.pth')
 
         loss = calc_loss(B, F, G, Sim, opt.gamma, opt.eta)
 
-        print('...epoch: %3d, loss: %3.3f, lr: %f' % (epoch + 1, loss, lr))
+        print('...epoch: %3d, loss: %3.3f, lr: %f' % (epoch + 1, loss.item(), lr))
 
     print('...training procedure finish')
     qBX = generate_image_code(img_model, query_x, opt.bit)
@@ -150,7 +171,7 @@ def split_data(images, tags, labels):
 
 def calc_neighbor(label1, label2):
     # calculate the similar matrix
-    Sim = (label1.matmul(label2.transpose(0, 1)) > 0).type(torch.int)
+    Sim = (label1.matmul(label2.transpose(0, 1)) > 0).type(torch.FloatTensor)
     return Sim
 
 
@@ -167,10 +188,10 @@ def generate_image_code(img_model, X, bit):
     batch_size = opt.batch_size
     num_data = X.shape[0]
     index = np.linspace(0, num_data - 1, num_data).astype(int)
-    B = torch.zeros(num_data, bit, dtype=torch.float32)
+    B = torch.zeros(num_data, bit, dtype=torch.FloatTensor)
     for i in range(num_data // batch_size + 1):
         ind = index[i * batch_size: min((i + 1) * batch_size, num_data)]
-        image = X[ind].type(torch.float32)
+        image = X[ind].type(torch.FloatTensor)
 
         cur_f = img_model(image)
         B[ind, :] = cur_f
@@ -182,10 +203,10 @@ def generate_text_code(txt_model, Y, bit):
     batch_size = opt.batch_size
     num_data = Y.shape[0]
     index = np.linspace(0, num_data - 1, num_data).astype(int)
-    B = torch.zeros(num_data, bit, dtype=torch.float32)
+    B = torch.zeros(num_data, bit, dtype=torch.FloatTensor)
     for i in range(num_data // batch_size + 1):
         ind = index[i * batch_size: min((i + 1) * batch_size, num_data)]
-        text = Y[ind].type(torch.float32)
+        text = Y[ind].type(torch.FloatTensor)
 
         cur_g = txt_model(text)
         B[ind, :] = cur_g
