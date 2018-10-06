@@ -1,4 +1,4 @@
-'.gitignore'/
+'.gitignore'
 '__pycache__'/
 data/
 checkpoints/
