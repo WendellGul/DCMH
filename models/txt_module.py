@@ -1,8 +1,15 @@
+import torch
 from torch import nn
 from torch.nn import functional as F
 from models.basic_module import BasicModule
 
 LAYER1_NODE = 8192
+
+
+def weights_init(m):
+    if type(m) == nn.Conv2d:
+        nn.init.normal_(m.weight.data, 0.0, 0.01)
+        nn.init.normal_(m.bias.data, 0.0, 0.01)
 
 
 class TxtModule(BasicModule):
@@ -14,14 +21,15 @@ class TxtModule(BasicModule):
         super(TxtModule, self).__init__()
         self.module_name = "text_model"
 
-        # first full-connect layer (input_dim * 8192)
-        self.fc1 = nn.Linear(y_dim, LAYER1_NODE)
-
-        # second full-connect layer (8192 * bit)
-        self.fc2 = nn.Linear(LAYER1_NODE, bit)
+        # full-conv layers
+        self.conv1 = nn.Conv2d(1, LAYER1_NODE, kernel_size=(y_dim, 1), stride=(1, 1))
+        self.conv2 = nn.Conv2d(LAYER1_NODE, bit, kernel_size=1, stride=(1, 1))
+        self.apply(weights_init)
 
     def forward(self, x):
-        x = self.fc1(x)
+        x = self.conv1(x)
         x = F.relu(x)
-        x = self.fc2(x)
+        x = self.conv2(x)
+        x = x.squeeze()
         return x
+

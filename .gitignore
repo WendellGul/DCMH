@@ -1,2 +1,6 @@
 data/
-
+checkpoints/
+.idea/
+result/
+*.log
+*.sh

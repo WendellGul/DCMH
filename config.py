@@ -2,10 +2,12 @@ import warnings
 
 
 class DefaultConfig(object):
-    load_model_path = None
+    load_img_path = None  # load model path
+    load_txt_path = None
 
     # data parameters
-    data_path = 'data/mirflickr25k.mat'
+    data_path = '/data5/guwen/data/FLICKR-25K.mat'
+    pretrain_model_path = '/data5/guwen/data/imagenet-vgg-f.mat'
     training_size = 10000
     query_size = 2000
     database_size = 18015
@@ -18,7 +20,7 @@ class DefaultConfig(object):
     bit = 64  # final binary code length
     lr = 10 ** (-1.5)  # initial learning rate
 
-    use_gpu = False
+    use_gpu = True
 
     print_freq = 2  # print info every N epoch
 

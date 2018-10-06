@@ -10,11 +10,14 @@ class BasicModule(t.nn.Module):
         super(BasicModule, self).__init__()
         self.module_name = str(type(self))
 
-    def load(self, path):
+    def load(self, path, use_gpu=False):
         """
         可加载指定路径的模型
         """
-        self.load_state_dict(t.load(path))
+        if not use_gpu:
+            self.load_state_dict(t.load(path, map_location=lambda storage, loc: storage))
+        else:
+            self.load_state_dict(t.load(path))
 
     def save(self, name=None):
         """
