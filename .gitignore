@@ -1,8 +1,0 @@
-'.gitignore'
-'__pycache__'/
-data/
-checkpoints/
-'.idea'/
-result/
-*.log
-*.sh
