@@ -62,17 +62,25 @@ def train(**kwargs):
     result = {
         'loss': [],
     }
+
+    ones = torch.ones(batch_size, 1)
+    ones_ = torch.ones(num_train - batch_size, 1)
+    unupdated_size = num_train - batch_size
+
     for epoch in range(opt.max_epoch):
         # train image net
         for i in tqdm(range(num_train // batch_size)):
             index = np.random.permutation(num_train)
             ind = index[0: batch_size]
+            unupdated_ind = np.setdiff1d(range(num_train), ind)
 
             sample_L = Variable(train_L[ind, :])
             image = Variable(train_x[ind].type(torch.float))
             if opt.use_gpu:
                 image = image.cuda()
                 sample_L = sample_L.cuda()
+                ones = ones.cuda()
+                ones_ = ones_.cuda()
 
             # similar matrix size: (batch_size, num_train)
             S = calc_neighbor(sample_L, train_L)  # S: (batch_size, num_train)
@@ -94,8 +102,9 @@ def train(**kwargs):
             # print('logloss_x:', logloss_x.data)
             quantization_x = torch.sum(torch.pow(B[ind, :] - cur_f, 2))
             # print('quantization_x:', quantization_x.data)
-            balance_x = torch.sum(torch.pow(torch.sum(F, dim=0), 2))
+            balance_x = torch.sum(torch.pow(cur_f.t().mm(ones) + F[unupdated_ind].t().mm(ones_), 2))
             # print('balance_x:', balance_x.data)
+            # print(logloss_x.data, quantization_x.data, balance_x.data)
             loss_x = logloss_x + opt.gamma * quantization_x + opt.eta * balance_x
             # print(batch_size * num_train)
             loss_x /= (batch_size * num_train)
@@ -166,7 +175,7 @@ def train(**kwargs):
     rBY = generate_text_code(txt_model, retrieval_y, opt.bit)
 
     mapi2t = calc_map_k(qBX, rBY, query_L, retrieval_L)
-    mapt2i = calc_map_k(qBY, rBY, query_L, retrieval_L)
+    mapt2i = calc_map_k(qBY, rBX, query_L, retrieval_L)
     print('...test MAP: MAP(i->t): %3.3f, MAP(t->i): %3.3f' % (mapi2t, mapt2i))
     result['mapi2t'] = float(mapi2t.data)
     result['mapt2i'] = float(mapt2i.data)
@@ -294,7 +303,7 @@ def generate_text_code(txt_model, Y, bit):
 def write_result(result):
     import os
     with open(os.path.join(opt.result_dir, 'result.txt'), 'w') as f:
-        for k, v in result:
+        for k, v in result.items():
             f.write(k + ' ' + str(v) + '\n')
 
 
