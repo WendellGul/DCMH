@@ -67,6 +67,8 @@ def train(**kwargs):
     ones_ = torch.ones(num_train - batch_size, 1)
     unupdated_size = num_train - batch_size
 
+    max_mapi2t = max_mapt2i = 0.
+
     for epoch in range(opt.max_epoch):
         # train image net
         for i in tqdm(range(num_train // batch_size)):
@@ -157,6 +159,16 @@ def train(**kwargs):
         print('...epoch: %3d, loss: %3.3f, lr: %f' % (epoch + 1, loss.data, lr))
         result['loss'].append(float(loss.data))
 
+        if opt.valid:
+            mapi2t, mapt2i = valid(img_model, txt_model, query_x, retrieval_x, query_y, retrieval_y,
+                                   query_L, retrieval_L)
+            print('...epoch: %3d, valid MAP: MAP(i->t): %3.4f, MAP(t->i): %3.4f' % (epoch + 1, mapi2t, mapt2i))
+            if mapt2i >= max_mapt2i and mapi2t >= max_mapi2t:
+                max_mapi2t = mapi2t
+                max_mapt2i = mapt2i
+                img_model.save(img_model.module_name + '.pth')
+                txt_model.save(txt_model.module_name + '.pth')
+
         lr = learning_rate[epoch + 1]
 
         # set learning rate
@@ -165,22 +177,26 @@ def train(**kwargs):
         for param in optimizer_txt.param_groups:
             param['lr'] = lr
 
-    img_model.save(img_model.module_name + '.pth')
-    txt_model.save(txt_model.module_name + '.pth')
-
     print('...training procedure finish')
+    if opt.valid:
+        print('   max MAP: MAP(i->t): %3.4f, MAP(t->i): %3.4f' % (max_mapi2t, max_mapt2i))
+    else:
+        mapi2t, mapt2i = valid(img_model, txt_model, query_x, retrieval_x, query_y, retrieval_y,
+                               query_L, retrieval_L)
+        print('   max MAP: MAP(i->t): %3.4f, MAP(t->i): %3.4f' % (mapi2t, mapt2i))
+
+    write_result(result)
+
+
+def valid(img_model, txt_model, query_x, retrieval_x, query_y, retrieval_y, query_L, retrieval_L):
     qBX = generate_image_code(img_model, query_x, opt.bit)
     qBY = generate_text_code(txt_model, query_y, opt.bit)
     rBX = generate_image_code(img_model, retrieval_x, opt.bit)
     rBY = generate_text_code(txt_model, retrieval_y, opt.bit)
 
-    mapi2t = calc_map_k(qBX, rBY, query_L, retrieval_L)
-    mapt2i = calc_map_k(qBY, rBX, query_L, retrieval_L)
-    print('...test MAP: MAP(i->t): %3.3f, MAP(t->i): %3.3f' % (mapi2t, mapt2i))
-    result['mapi2t'] = float(mapi2t.data)
-    result['mapt2i'] = float(mapt2i.data)
-
-    write_result(result)
+    mapi2t = calc_map(qBX, rBY, query_L, retrieval_L)
+    mapt2i = calc_map(qBY, rBX, query_L, retrieval_L)
+    return mapi2t, mapt2i
 
 
 def test(**kwargs):

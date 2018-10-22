@@ -22,6 +22,8 @@ class DefaultConfig(object):
 
     use_gpu = True
 
+    valid = True
+
     print_freq = 2  # print info every N epoch
 
     result_dir = 'result'
