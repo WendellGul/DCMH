@@ -194,8 +194,8 @@ def valid(img_model, txt_model, query_x, retrieval_x, query_y, retrieval_y, quer
     rBX = generate_image_code(img_model, retrieval_x, opt.bit)
     rBY = generate_text_code(txt_model, retrieval_y, opt.bit)
 
-    mapi2t = calc_map(qBX, rBY, query_L, retrieval_L)
-    mapt2i = calc_map(qBY, rBX, query_L, retrieval_L)
+    mapi2t = calc_map_k(qBX, rBY, query_L, retrieval_L)
+    mapt2i = calc_map_k(qBY, rBX, query_L, retrieval_L)
     return mapi2t, mapt2i
 
 
