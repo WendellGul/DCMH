@@ -60,7 +60,7 @@ def train(**kwargs):
 
     learning_rate = np.linspace(opt.lr, np.power(10, -6.), opt.max_epoch + 1)
     result = {
-        'loss': [],
+        'loss': []
     }
 
     ones = torch.ones(batch_size, 1)
@@ -165,10 +165,14 @@ def train(**kwargs):
     print('...training procedure finish')
     if opt.valid:
         print('   max MAP: MAP(i->t): %3.4f, MAP(t->i): %3.4f' % (max_mapi2t, max_mapt2i))
+        result['mapi2t'] = max_mapi2t
+        result['mapt2i'] = max_mapt2i
     else:
         mapi2t, mapt2i = valid(img_model, txt_model, query_x, retrieval_x, query_y, retrieval_y,
                                query_L, retrieval_L)
         print('   max MAP: MAP(i->t): %3.4f, MAP(t->i): %3.4f' % (mapi2t, mapt2i))
+        result['mapi2t'] = mapi2t
+        result['mapt2i'] = mapt2i
 
     write_result(result)
 
