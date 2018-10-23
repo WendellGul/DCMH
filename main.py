@@ -122,6 +122,7 @@ def train(**kwargs):
         for i in tqdm(range(num_train // batch_size)):
             index = np.random.permutation(num_train)
             ind = index[0: batch_size]
+            unupdated_ind = np.setdiff1d(range(num_train), ind)
 
             sample_L = Variable(train_L[ind, :])
             text = train_y[ind, :].unsqueeze(1).unsqueeze(-1).type(torch.float)
@@ -142,7 +143,7 @@ def train(**kwargs):
             theta_y = 1.0 / 2 * torch.matmul(cur_g, F.t())
             logloss_y = -torch.sum(S * theta_y - torch.log(1.0 + torch.exp(theta_y)))
             quantization_y = torch.sum(torch.pow(B[ind, :] - cur_g, 2))
-            balance_y = torch.sum(torch.pow(torch.sum(G, dim=0), 2))
+            balance_y = torch.sum(torch.pow(cur_g.t().mm(ones) + G[unupdated_ind].t().mm(ones_), 2))
             loss_y = logloss_y + opt.gamma * quantization_y + opt.eta * balance_y
             loss_y /= (num_train * batch_size)
 
