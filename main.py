@@ -87,36 +87,20 @@ def train(**kwargs):
             # similar matrix size: (batch_size, num_train)
             S = calc_neighbor(sample_L, train_L)  # S: (batch_size, num_train)
             cur_f = img_model(image)  # cur_f: (batch_size, bit)
-            # print('cur_f:', torch.max(cur_f), torch.min(cur_f))
             F_buffer[ind, :] = cur_f.data
             F = Variable(F_buffer)
             G = Variable(G_buffer)
 
-            # if torch.any(torch.isnan(cur_f)):
-            #     print(True)
-
-            # calculate loss)
-            # theta_x: (batch_size, num_train)
             theta_x = 1.0 / 2 * torch.matmul(cur_f, G.t())
-            # print('theta_x:', torch.sum(theta_x), torch.sum(S * theta_x))
-            # print('S:', S)
             logloss_x = -torch.sum(S * theta_x - torch.log(1.0 + torch.exp(theta_x)))
-            # print('logloss_x:', logloss_x.data)
             quantization_x = torch.sum(torch.pow(B[ind, :] - cur_f, 2))
-            # print('quantization_x:', quantization_x.data)
             balance_x = torch.sum(torch.pow(cur_f.t().mm(ones) + F[unupdated_ind].t().mm(ones_), 2))
-            # print('balance_x:', balance_x.data)
-            # print(logloss_x.data, quantization_x.data, balance_x.data)
             loss_x = logloss_x + opt.gamma * quantization_x + opt.eta * balance_x
-            # print(batch_size * num_train)
             loss_x /= (batch_size * num_train)
-            # print('loss_x:', loss_x.data)
 
             optimizer_img.zero_grad()
             loss_x.backward()
             optimizer_img.step()
-            # for param in img_model.parameters():
-            #     print('param:', torch.max(param), torch.min(param))
 
         # train txt net
         for i in tqdm(range(num_train // batch_size)):
