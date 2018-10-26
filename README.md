@@ -10,6 +10,8 @@ Deep cross-modal hashing 论文 pytorch 实现
 
 ## 运行
 
+`mkdir checkpoints result` 创建相关文件夹
+
 `python main.py help` 查看帮助信息
 
 `python main.py train` 训练并测试
