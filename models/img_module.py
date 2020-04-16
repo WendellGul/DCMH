@@ -78,9 +78,3 @@ class ImgModule(BasicModule):
         return x
 
 
-if __name__ == '__main__':
-    path = '/data5/guwen/data/imagenet-vgg-f.mat'
-    import scipy.io as scio
-    data = scio.loadmat(path)
-    print(data['normalization'][0][0])
-
