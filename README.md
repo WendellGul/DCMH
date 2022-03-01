@@ -1,31 +1,31 @@
 # DCMH
 
-Deep cross-modal hashing 论文 pytorch 实现
+PyTorch implementataion for Deep cross-modal hashing
 
-## 环境
+## Environment
 
 `python 3.5+`
 
 `pytorch 0.3.0+`
 
-## 运行
+## Usage
 
-`mkdir checkpoints result` 创建相关文件夹
+`mkdir checkpoints result` to create required folder.
 
-`python main.py help` 查看帮助信息
+`python main.py help` to get help information.
 
-`python main.py train` 训练并测试
+`python main.py train` for train and test DCMH.
 
-`python main.py test` 单独进行测试
+`python main.py test` for test only.
 
-## 数据
+## Dataset
 
 `FLICKR-25K.mat` 
 
-* 链接:https://pan.baidu.com/s/1X5BTyux524aUyqHpFGPPlA  密码:eico
+* link: https://pan.baidu.com/s/1X5BTyux524aUyqHpFGPPlA  password: eico
 
 `imagenet-vgg-f.mat`
 
-* 链接:https://pan.baidu.com/s/1h-7OUyb5nbjrNkIc_1G9JQ  密码:5itw
+* link: https://pan.baidu.com/s/1h-7OUyb5nbjrNkIc_1G9JQ  password: 5itw
 
-> 数据来源以及TensorFlow源码地址：https://github.com/jiangqy/DCMH-CVPR2017
+> Dataset source and TensorFlow souce code：https://github.com/jiangqy/DCMH-CVPR2017
